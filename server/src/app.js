@@ -38,8 +38,10 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(err.status || 500).json({ message: err.message || 'Server Error' });
+  const status = err.status || 500;
+  // Expected client errors (e.g. a rejected CSRF token) are not server faults.
+  if (status >= 500) console.error(err);
+  res.status(status).json({ message: err.message || 'Server Error' });
 });
 
 export default app;
