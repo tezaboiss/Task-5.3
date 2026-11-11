@@ -6,6 +6,7 @@ import authRoutes from './routes/auth.js';
 import itemRoutes from './routes/items.js';
 import userRoutes from './routes/users.js';
 import settingRoutes from './routes/settings.js';
+import { csrfProtection, csrfToken } from './middleware/csrf.js';
 
 const app = express();
 
@@ -21,6 +22,10 @@ app.use(cookieParser());
 
 app.get('/api/health', (req, res) => res.json({ ok: true }));
 
+// Every state-changing request below must carry a valid anti-CSRF token.
+app.get('/api/csrf-token', csrfToken);
+app.use(csrfProtection);
+
 app.use('/api/auth', authRoutes);
 app.use('/api/items', itemRoutes);
 app.use('/api/users', userRoutes);
@@ -33,8 +38,10 @@ app.use((req, res) => {
 
 // Error handler
 app.use((err, req, res, next) => {
-  console.error(err);
-  res.status(err.status || 500).json({ message: err.message || 'Server Error' });
+  const status = err.status || 500;
+  // Expected client errors (e.g. a rejected CSRF token) are not server faults.
+  if (status >= 500) console.error(err);
+  res.status(status).json({ message: err.message || 'Server Error' });
 });
 
 export default app;
